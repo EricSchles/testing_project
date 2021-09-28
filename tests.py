@@ -2,6 +2,7 @@ import sqlite3 as sql
 from num2words import num2words
 from clean_data import get_table_name, create_db_connection, clean_string
 import random
+import pandas as pd
 
 def test_check_sqlconn():
     try:
@@ -39,20 +40,20 @@ def test_database_connection():
 def test_database_connection_pd():
     connection = create_db_connection("example.db")
     table = num2words(random.randint(1, 10)) + "_table"
-    df = pd.read_sql_query(f"SELECT * FROM {table} LIMIT 1")
+    df = pd.read_sql_query(f"SELECT * FROM {table} LIMIT 1", connection)
     assert df is not None
 
 def test_all_columns_exist_pd():
     connection = create_db_connection("example.db")
     num_tables = 10
     columns = [
-        "col_one", "col_two", "col_three",
+        "id", "col_one", "col_two", "col_three",
         "col_four", "col_five"
     ]
     size = None
     for table_index in range(1, num_tables+1):
-        table_name = get_table_name(table_index)
-        df = pd.read_sql_query(f"SELECT * FROM {table}")
+        table = get_table_name(table_index)
+        df = pd.read_sql_query(f"SELECT * FROM {table}", connection)
         assert df.columns.tolist() == columns
         if size is None:
             size = df.shape[0]
@@ -89,9 +90,9 @@ def test_null_uniqueness_pd():
         "nil"
     ]
     for table_index in range(1, num_tables+1):
-        table_name = get_table_name(table_index)
-        df = pd.read_sql_query(f"SELECT * FROM {table}")
-        for column in df.columns:
+        table = get_table_name(table_index)
+        df = pd.read_sql_query(f"SELECT * FROM {table}", connection)
+        for column in df.select_dtypes(["object"]):
             unique_values = df[column].str.lower().unique()
             assert not any([
                 null_value in unique_values
@@ -112,3 +113,6 @@ def test_null_uniqueness():
                 if val.lower() in null_values and val != "none":
                     assert False
     assert True
+
+if __name__ == '__main__':
+    test_null_uniqueness_pd()

@@ -29,7 +29,7 @@ def get_table_pd(table: str, connection: sql.Connection) -> pd.DataFrame:
     query = f"""
     SELECT *
     FROM {table}
-    """)
+    """
     return pd.read_sql_query(query, connection)
     
 def get_rows(table: str) -> List:
@@ -49,7 +49,7 @@ def dedupe_nulls_pd(table: str, connection, replace_value) -> pd.DataFrame:
         null_values.append(value.upper())
     df = get_table_pd(table, connection)
     for null_value in null_values:
-        df = df.replace(to_replace=f"{null_value}", "none")
+        df = df.replace(to_replace=f"{null_value}", value="none")
     return df
         
 def dedupe_nulls(rows):
@@ -100,7 +100,7 @@ def main_pd(database_name):
     num_tables = 10
     for table_index in range(1, num_tables+1):
         table = get_table_name(table_index)
-        df = dedupe_nulls_pd(table: str, connection, replace_value)
+        df = dedupe_nulls_pd(table, connection, replace_value)
         df.to_sql(table, connection, if_exists="replace")
     
 if __name__ == '__main__':
