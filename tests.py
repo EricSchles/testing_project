@@ -3,6 +3,15 @@ from num2words import num2words
 from clean_data import get_table_name, create_db_connection, clean_string
 import random
 
+def test_check_sqlconn():
+    try:
+        connection = sql.connect('example.db')
+        connection.cursor()
+        assert True
+    except:
+        assert False
+    
+
 def test_file_exists():
     try:
         with open("example.db", "rb") as f:
@@ -27,6 +36,28 @@ def test_database_connection():
     result = engine.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
     assert result > 0
 
+def test_database_connection_pd():
+    connection = create_db_connection("example.db")
+    table = num2words(random.randint(1, 10)) + "_table"
+    df = pd.read_sql_query(f"SELECT * FROM {table} LIMIT 1")
+    assert df is not None
+
+def test_all_columns_exist_pd():
+    connection = create_db_connection("example.db")
+    num_tables = 10
+    columns = [
+        "col_one", "col_two", "col_three",
+        "col_four", "col_five"
+    ]
+    size = None
+    for table_index in range(1, num_tables+1):
+        table_name = get_table_name(table_index)
+        df = pd.read_sql_query(f"SELECT * FROM {table}")
+        assert df.columns.tolist() == columns
+        if size is None:
+            size = df.shape[0]
+        assert size == df.shape[0]
+        
 def test_all_columns_exist():
     connection = create_db_connection("example.db")
     engine = connection.cursor()
@@ -50,6 +81,23 @@ def test_all_columns_exist():
             prev_result = result
         result = 0
 
+def test_null_uniqueness_pd():
+    connection = create_db_connection("example.db")
+    num_tables = 10
+    null_values = [
+        "nill", "null",
+        "nil"
+    ]
+    for table_index in range(1, num_tables+1):
+        table_name = get_table_name(table_index)
+        df = pd.read_sql_query(f"SELECT * FROM {table}")
+        for column in df.columns:
+            unique_values = df[column].str.lower().unique()
+            assert not any([
+                null_value in unique_values
+                for null_value in null_values
+            ])
+            
 def test_null_uniqueness():
     con = sql.connect("example.db")
     cur = con.cursor()
