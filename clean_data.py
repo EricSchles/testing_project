@@ -1,6 +1,7 @@
 import sqlite3 as sql
 from num2words import num2words
 from typing import List
+import pandas as pd
 
 def clean_string(string: str) -> str:
     return "_".join(string.split("-"))
@@ -24,6 +25,13 @@ def insert_row(connection, engine, table, row):
     """)
     connection.commit()
 
+def get_table_pd(table: str, connection: sql.Connection) -> pd.DataFrame:
+    query = f"""
+    SELECT *
+    FROM {table}
+    """)
+    return pd.read_sql_query(query, connection)
+    
 def get_rows(table: str) -> List:
     return engine.execute(
     f"""
@@ -31,6 +39,19 @@ def get_rows(table: str) -> List:
     FROM {table}
     """).fetchall()
 
+def dedupe_nulls_pd(table: str, connection, replace_value) -> pd.DataFrame:
+    null_values = [
+        "nill", "null",
+        "nil"
+    ]
+    for value in null_values:
+        null_values.append(value.capitalize())
+        null_values.append(value.upper())
+    df = get_table_pd(table, connection)
+    for null_value in null_values:
+        df = df.replace(to_replace=f"{null_value}", "none")
+    return df
+        
 def dedupe_nulls(rows):
     null_values = [
         "none", "nill", "null",
@@ -73,8 +94,15 @@ def main(database_name):
         for row in new_rows:
             insert_row(connection, engine, table, row)
     engine.close()
+
+def main_pd(database_name):
+    connection = create_db_connection(database_name)
+    num_tables = 10
+    for table_index in range(1, num_tables+1):
+        table = get_table_name(table_index)
+        df = dedupe_nulls_pd(table: str, connection, replace_value)
+        df.to_sql(table, connection, if_exists="replace")
     
 if __name__ == '__main__':
-    dedup_nulls("example.db")
-         
-
+    main("example.db")
+    
